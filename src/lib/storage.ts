@@ -18,6 +18,15 @@ const HEIC_BRANDS = new Set(["heic", "heix", "hevc", "heim", "heis", "hevm", "he
 // with zero cloud setup.
 const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
 
+// `Buffer.from(arrayBuffer)` creates a zero-copy view rather than copying
+// bytes. On Vercel, `file.arrayBuffer()` and the HEIC WASM decoder can hand
+// back a buffer backed by a real SharedArrayBuffer, which undici's fetch
+// (used by @vercel/blob's put()) rejects outright ("SharedArrayBuffer is
+// not allowed"). Forcing a copy here guarantees a plain, non-shared buffer.
+function toSafeBuffer(input: ArrayBuffer | Uint8Array): Buffer {
+  return Buffer.from(new Uint8Array(input));
+}
+
 /**
  * iPhones upload photos as HEIC/HEIF. sharp's built-in HEIF decoder enforces
  * a strict security limit on the number of internal image references and
@@ -43,12 +52,12 @@ function isHeic(buffer: Buffer, mimeType: string): boolean {
  * original and everything downstream are in a browser-renderable format.
  */
 export async function saveOriginalPhoto(id: string, file: File): Promise<{ imagePath: string; buffer: Buffer }> {
-  let buffer = Buffer.from(await file.arrayBuffer());
+  let buffer = toSafeBuffer(await file.arrayBuffer());
   let mimeType = file.type;
 
   if (isHeic(buffer, mimeType)) {
     const jpegBuffer = await convertHeic({ buffer, format: "JPEG", quality: 0.92 });
-    buffer = Buffer.from(jpegBuffer);
+    buffer = toSafeBuffer(jpegBuffer);
     mimeType = "image/jpeg";
   }
 
