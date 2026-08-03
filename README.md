@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# She Has Options
 
-## Getting Started
+A personal AI-powered wardrobe app. Catalog your clothes by photo, get AI-suggested outfits, check if two pieces match, and build packing lists — all running locally on your own machine.
 
-First, run the development server:
+## Features
+
+- **Photo upload + AI tagging** — Claude's vision API auto-detects category, color, pattern, season, and formality
+- **Optional garment extraction** — isolate just the clothing item from a photo of you wearing it (removes body/background), using a local ONNX model, no cloud involved
+- **Outfit suggestions** — AI-generated or a built-in offline fallback, weather-aware (defaults to Dubai)
+- **"Does this match?"** — quick compatibility check between any two or more items
+- **Wear/laundry tracking** — log wear, flag items as needing a wash, get reminders for things you haven't worn in a while
+- **Packing lists** — generate a day-by-day capsule for a trip from your existing wardrobe
+- **Multiple accounts** — simple username/password login, each with a fully separate wardrobe
+
+## Stack
+
+Next.js (App Router) + TypeScript + Tailwind, SQLite via Prisma, local file storage for photos, Claude API for AI features.
+
+## Running it locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`. You'll need an Anthropic API key in a `.env` file:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+ANTHROPIC_API_KEY=sk-ant-...
+DATABASE_URL="file:./dev.db"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+All your photos and data stay on your machine — the only external call is to the Anthropic API for AI tagging/suggestions (and Open-Meteo for weather, which needs no key).

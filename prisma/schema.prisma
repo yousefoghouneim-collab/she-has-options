@@ -1,0 +1,99 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  items    ClothingItem[]
+  outfits  Outfit[]
+  sessions Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model ClothingItem {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imagePath      String
+  displayPath    String
+  category       String
+  subcategory    String?
+  primaryColor   String?
+  secondaryColor String?
+  pattern        String?
+  season         String // JSON-encoded string array, e.g. ["summer","spring"]
+  formality      Int?
+  material       String?
+  brand          String?
+  notes          String?
+
+  aiTagged      Boolean @default(false)
+  aiConfidence  Float?
+  aiRawResponse String?
+
+  favorite  Boolean @default(false)
+  status    String  @default("active") // active | archived | retired
+  needsWash Boolean @default(false)
+
+  wearLogs    WearLog[]
+  outfitItems OutfitItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Outfit {
+  id          String  @id @default(cuid())
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String?
+  occasion    String?
+  aiGenerated Boolean @default(false)
+  aiReasoning String?
+  favorite    Boolean @default(false)
+
+  items    OutfitItem[]
+  wearLogs WearLog[]
+
+  createdAt DateTime @default(now())
+}
+
+model OutfitItem {
+  id       String @id @default(cuid())
+  outfitId String
+  itemId   String
+
+  outfit Outfit       @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  item   ClothingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([outfitId, itemId])
+}
+
+model WearLog {
+  id       String   @id @default(cuid())
+  wornAt   DateTime @default(now())
+  itemId   String?
+  outfitId String?
+
+  item   ClothingItem? @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  outfit Outfit?       @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+}

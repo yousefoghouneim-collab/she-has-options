@@ -1,26 +1,223 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-ecru: #f5f1e6;
+  --color-ecru-dim: #ece5d4;
+  --color-paper: #fffefb;
+  --color-ink: #17130f;
+  --color-ink-soft: #635a4f;
+  --color-crimson: #af1730;
+  --color-crimson-dark: #8c1226;
+  --color-crimson-soft: #f3d9dc;
+  --color-gold: #c68f1f;
+  --color-gold-soft: #f0dfb2;
+  --color-line: #ddd2ba;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--color-ecru);
+  --color-foreground: var(--color-ink);
+  --color-ecru: var(--color-ecru);
+  --color-ecru-dim: var(--color-ecru-dim);
+  --color-paper: var(--color-paper);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-crimson: var(--color-crimson);
+  --color-crimson-dark: var(--color-crimson-dark);
+  --color-crimson-soft: var(--color-crimson-soft);
+  --color-gold: var(--color-gold);
+  --color-gold-soft: var(--color-gold-soft);
+  --color-line: var(--color-line);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ecru);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-crimson);
+  color: var(--color-ecru);
+}
+
+/* Bold "cut corner" motif used across cards + buttons instead of soft rounded pills. */
+.clip-corner {
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+}
+
+.clip-corner-sm {
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+}
+
+.hard-shadow {
+  box-shadow: 5px 5px 0 0 var(--color-ink);
+}
+
+.hard-shadow-sm {
+  box-shadow: 3px 3px 0 0 var(--color-ink);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--color-ink);
+  color: var(--color-ecru);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.3rem;
+  border: 1px solid var(--color-ink);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-crimson);
+  border-color: var(--color-crimson);
+  transform: translate(-2px, -2px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  color: var(--color-ink);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.65rem 1.2rem;
+  border: 1px solid var(--color-ink);
+  transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-ink);
+  color: var(--color-ecru);
+  transform: translate(-2px, -2px);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-crimson);
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  background: var(--color-paper);
+  padding: 0.45rem 0.65rem;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-ink);
+}
+
+/* Ambient warm-glow background — fixed behind all content, purely decorative. */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ambient-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(110px);
+  opacity: 0.5;
+  will-change: transform;
+}
+
+.ambient-blob-1 {
+  top: -10%;
+  left: -8%;
+  width: 42vw;
+  height: 42vw;
+  background: #ff8a5c;
+  animation: drift-a 34s ease-in-out infinite alternate;
+}
+
+.ambient-blob-2 {
+  bottom: -14%;
+  right: -10%;
+  width: 46vw;
+  height: 46vw;
+  background: #f0c14a;
+  animation: drift-b 40s ease-in-out infinite alternate;
+}
+
+.ambient-blob-3 {
+  top: 30%;
+  right: 8%;
+  width: 30vw;
+  height: 30vw;
+  background: #e8748f;
+  opacity: 0.38;
+  animation: drift-c 28s ease-in-out infinite alternate;
+}
+
+.ambient-blob-4 {
+  bottom: 15%;
+  left: 12%;
+  width: 24vw;
+  height: 24vw;
+  background: #af1730;
+  opacity: 0.22;
+  animation: drift-a 45s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes drift-a {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(6vw, 8vh) scale(1.15);
+  }
+}
+
+@keyframes drift-b {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-7vw, -6vh) scale(1.1);
+  }
+}
+
+@keyframes drift-c {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-5vw, 7vh) scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob {
+    animation: none;
+  }
 }
