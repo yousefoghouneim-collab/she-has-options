@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     try {
       tags = await tagClothingImage(webpBuffer.toString("base64"), "image/webp");
     } catch (err) {
+      console.error("AI tagging failed:", err);
       aiError = err instanceof AIUnavailableError ? err.message : "AI tagging failed";
     }
 
