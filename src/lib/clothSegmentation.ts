@@ -58,7 +58,18 @@ async function ensureModelDownloaded(): Promise<void> {
 
 async function getSession(): Promise<ort.InferenceSession> {
   if (!sessionPromise) {
-    sessionPromise = ensureModelDownloaded().then(() => ort.InferenceSession.create(MODEL_PATH));
+    // Vercel's serverless functions cap memory at 2048MB (Hobby plan). ORT's default
+    // arena allocator pre-reserves and reuses large memory blocks across the graph,
+    // which spiked peak usage past that ceiling (SIGKILL) on this model. Disabling
+    // the arena/mem-pattern planner trades some speed for a much smaller footprint.
+    sessionPromise = ensureModelDownloaded().then(() =>
+      ort.InferenceSession.create(MODEL_PATH, {
+        graphOptimizationLevel: "basic",
+        enableCpuMemArena: false,
+        enableMemPattern: false,
+        executionMode: "sequential",
+      })
+    );
   }
   return sessionPromise;
 }
