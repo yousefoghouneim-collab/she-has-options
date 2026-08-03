@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Archivo, Abril_Fatface } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
@@ -19,6 +19,11 @@ const abrilFatface = Abril_Fatface({
 export const metadata: Metadata = {
   title: "She Has Options",
   description: "Your wardrobe, catalogued and mixed by AI.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
