@@ -87,10 +87,12 @@ export async function writeDisplayImage(
   const displayRelative = `display/${id}.webp`;
   let pipeline = sharp(buffer);
   if (autoRotate) pipeline = pipeline.rotate();
-  const webpBuffer = await pipeline
-    .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
-    .webp({ quality: 82 })
-    .toBuffer();
+  const webpBuffer = toSafeBuffer(
+    await pipeline
+      .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toBuffer()
+  );
 
   if (useBlob) {
     const blob = await put(displayRelative, webpBuffer, { access: "public", contentType: "image/webp" });
