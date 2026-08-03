@@ -12,6 +12,9 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json().catch(() => ({}));
   const occasion: string | undefined = typeof body.occasion === "string" ? body.occasion : undefined;
+  const excludeItemIds: string[] = Array.isArray(body.excludeItemIds)
+    ? body.excludeItemIds.filter((id: unknown): id is string => typeof id === "string")
+    : [];
 
   const weather = await getCurrentWeather().catch(() => null);
 
@@ -52,7 +55,7 @@ export async function POST(request: NextRequest) {
   let source: "ai" | "local";
 
   try {
-    const result = await suggestOutfitWithAI(summaries, occasion, weatherNote);
+    const result = await suggestOutfitWithAI(summaries, occasion, weatherNote, excludeItemIds);
     itemIds = result.itemIds;
     reasoning = result.reasoning;
     source = "ai";
@@ -69,7 +72,8 @@ export async function POST(request: NextRequest) {
         favorite: w.favorite,
         season: safeParseSeason(w.season),
       })),
-      weather ? { isHot: weather.isHot, isVeryHot: weather.isVeryHot } : undefined
+      weather ? { isHot: weather.isHot, isVeryHot: weather.isVeryHot } : undefined,
+      new Set(excludeItemIds)
     );
     if (!local) {
       return NextResponse.json(

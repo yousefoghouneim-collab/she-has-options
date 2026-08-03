@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { CATEGORIES, SEASONS } from "@/lib/taxonomy";
+import { structuralIssue } from "@/lib/outfitEngine";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 
@@ -112,15 +113,23 @@ export type WardrobeItemSummary = {
 export async function suggestOutfitWithAI(
   wardrobe: WardrobeItemSummary[],
   occasion?: string,
-  weatherNote?: string
+  weatherNote?: string,
+  excludeItemIds?: string[]
 ): Promise<{ itemIds: string[]; reasoning: string }> {
   const anthropic = getClient();
+
+  const excludeNote =
+    excludeItemIds && excludeItemIds.length
+      ? `\nThe person just saw this exact combination and wants something different: ${JSON.stringify(
+          excludeItemIds
+        )}. Build a noticeably different outfit — swap in different pieces wherever the wardrobe allows, don't just tweak one item.`
+      : "";
 
   const prompt = `Here is a person's wardrobe as JSON, each item with an "id" you must reference exactly:
 ${JSON.stringify(wardrobe)}
 
-Suggest ONE complete outfit from these items (do not invent items). ${occasion ? `Occasion: ${occasion}.` : "No specific occasion given — pick something versatile."}
-${weatherNote ? `${weatherNote}\n` : ""}Respond with ONLY JSON (no markdown fences):
+Suggest ONE complete, wearable outfit from these items (do not invent items). An outfit must make physical sense: at most one top, at most one bottom (never two bottoms like shorts + sweatpants together, and never two tops), at most one pair of shoes, and a dress replaces a top+bottom rather than being combined with a separate top or bottom. ${occasion ? `Occasion: ${occasion}.` : "No specific occasion given — pick something versatile."}
+${weatherNote ? `${weatherNote}\n` : ""}${excludeNote}Respond with ONLY JSON (no markdown fences):
 { "itemIds": ["id1", "id2", ...], "reasoning": "one short sentence explaining the pairing" }
 Use only item ids that appear above. Include shoes if any exist in the wardrobe.`;
 
@@ -139,6 +148,18 @@ Use only item ids that appear above. Include shoes if any exist in the wardrobe.
 
   if (itemIds.length < 1) throw new AIUnavailableError("Claude returned too few valid item ids");
 
+  if (excludeItemIds && excludeItemIds.length === itemIds.length) {
+    const prev = new Set(excludeItemIds);
+    if (itemIds.every((id) => prev.has(id))) {
+      throw new AIUnavailableError("Claude repeated the same outfit despite being asked for something different");
+    }
+  }
+
+  const byId = new Map(wardrobe.map((w) => [w.id, w]));
+  const chosen = itemIds.map((id) => byId.get(id)).filter((w): w is WardrobeItemSummary => !!w);
+  const issue = structuralIssue(chosen);
+  if (issue) throw new AIUnavailableError(`Claude suggested a structurally invalid outfit: ${issue}`);
+
   return {
     itemIds,
     reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : "Suggested by Claude.",
@@ -148,11 +169,19 @@ Use only item ids that appear above. Include shoes if any exist in the wardrobe.
 export async function checkMatchWithAI(
   items: WardrobeItemSummary[]
 ): Promise<{ matches: boolean; reason: string }> {
+  const structuralProblem = structuralIssue(items);
+  if (structuralProblem) {
+    // Don't even ask Claude — two bottoms, two tops, etc. is never an outfit
+    // regardless of colour/style opinion, so skip straight to a firm "no".
+    return { matches: false, reason: structuralProblem };
+  }
+
   const anthropic = getClient();
 
   const prompt = `Do these clothing items work well together as an outfit? Items:
 ${JSON.stringify(items)}
 
+Judge based on colour harmony, formality, and occasion fit — the items have already been checked to make sure they're structurally a valid outfit (right number of tops/bottoms/shoes), so focus purely on style.
 Respond with ONLY JSON (no markdown fences): { "matches": true or false, "reason": "one short sentence" }`;
 
   const response = await anthropic.messages.create({

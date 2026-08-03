@@ -36,11 +36,16 @@ export default function OutfitsPage() {
     setStaged((prev) => (prev.some((i) => i.id === item.id) ? prev.filter((i) => i.id !== item.id) : [...prev, item]));
   }
 
-  async function suggestOutfit() {
+  async function suggestOutfit(excludeCurrent = false) {
     setSuggesting(true);
     setSuggestError(null);
     try {
-      const res = await fetch("/api/outfits/suggest", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const excludeItemIds = excludeCurrent ? staged.map((i) => i.id) : [];
+      const res = await fetch("/api/outfits/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ excludeItemIds }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't suggest an outfit");
       setStaged(data.items);
@@ -100,9 +105,18 @@ export default function OutfitsPage() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button onClick={suggestOutfit} disabled={suggesting || items.length < 1} className="btn-primary clip-corner-sm">
+        <button onClick={() => suggestOutfit(false)} disabled={suggesting || items.length < 1} className="btn-primary clip-corner-sm">
           {suggesting ? "Thinking…" : "✨ Suggest an Outfit"}
         </button>
+        {staged.length > 0 && (source === "ai" || source === "local") && (
+          <button
+            onClick={() => suggestOutfit(true)}
+            disabled={suggesting || items.length < 1}
+            className="btn-secondary clip-corner-sm"
+          >
+            {suggesting ? "Thinking…" : "🔀 Suggest a Different One"}
+          </button>
+        )}
         {staged.length > 0 && (
           <button
             onClick={() => {

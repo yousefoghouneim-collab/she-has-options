@@ -21,6 +21,35 @@ export type WeatherBias = { isHot: boolean; isVeryHot: boolean };
 
 const COMPLETE_CATEGORIES = new Set(["Dress"]);
 const ACCESSORY_CATEGORIES = new Set(["Accessory", "Headwear", "Jewelry", "Bag"]);
+// Categories that can only fill one "slot" in a real outfit — picking two of
+// the same one (e.g. shorts + sweatpants, both "Bottom") isn't a style
+// clash, it's structurally not an outfit at all.
+const SINGLE_SLOT_CATEGORIES = new Set(["Dress", "Top", "Bottom", "Shoes", "Outerwear"]);
+
+/**
+ * Catches combinations no human would call "an outfit" regardless of colour
+ * harmony: two of the same single-slot category (two bottoms, two tops,
+ * two pairs of shoes...), or a dress paired with a separate top/bottom that
+ * would double up the same body area a dress already covers.
+ */
+export function structuralIssue(items: ItemForMatching[]): string | null {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    if (!SINGLE_SLOT_CATEGORIES.has(item.category)) continue;
+    counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+  }
+  for (const [category, count] of counts) {
+    if (count > 1) {
+      return category === "Dress"
+        ? "You've picked more than one dress — try one at a time with separates."
+        : `You've picked more than one ${category.toLowerCase()} (e.g. two ${category === "Bottom" ? "pairs of shorts/pants" : "items for the same slot"}) — an outfit only has room for one.`;
+    }
+  }
+  if ((counts.get("Dress") ?? 0) > 0 && ((counts.get("Top") ?? 0) > 0 || (counts.get("Bottom") ?? 0) > 0)) {
+    return "A dress plus a separate top or bottom covers the same part of the body twice — pick one or the other.";
+  }
+  return null;
+}
 
 function pick<T>(items: T[]): T | undefined {
   if (!items.length) return undefined;
@@ -115,9 +144,16 @@ function poolsFrom(wardrobe: ItemForMatching[], weather?: WeatherBias) {
  */
 export function generateLocalOutfit(
   wardrobe: ItemForMatching[],
-  weather?: WeatherBias
+  weather?: WeatherBias,
+  excludeIds?: Set<string>
 ): { itemIds: string[]; reason: string } | null {
-  const picked = pickOutfitFrom(poolsFrom(wardrobe, weather), weather);
+  const candidateWardrobe = excludeIds?.size ? wardrobe.filter((i) => !excludeIds.has(i.id)) : wardrobe;
+  let picked = pickOutfitFrom(poolsFrom(candidateWardrobe, weather), weather);
+  // A small wardrobe may not have enough alternates to honor the exclusion —
+  // better to repeat something than to return nothing.
+  if (!picked && candidateWardrobe !== wardrobe) {
+    picked = pickOutfitFrom(poolsFrom(wardrobe, weather), weather);
+  }
   if (!picked) return null;
 
   const colorWords = Array.from(new Set(picked.map((p) => p.primaryColor).filter(Boolean)));
@@ -193,13 +229,13 @@ export function localMatchCheck(items: ItemForMatching[]): {
   const colorScore = outfitColorScore(items.map((i) => i.primaryColor));
   const formalities = items.map((i) => i.formality).filter((f): f is number => typeof f === "number");
   const formalitySpread = formalities.length > 1 ? Math.max(...formalities) - Math.min(...formalities) : 0;
-  const twoCompleteGarments = items.filter((i) => COMPLETE_CATEGORIES.has(i.category)).length > 1;
+  const structuralProblem = structuralIssue(items);
 
-  const matches = colorScore >= 0.62 && formalitySpread <= 2 && !twoCompleteGarments;
+  const matches = colorScore >= 0.62 && formalitySpread <= 2 && !structuralProblem;
 
   let reason: string;
-  if (twoCompleteGarments) {
-    reason = "You've picked more than one standalone piece (e.g. two dresses) — try one at a time with separates.";
+  if (structuralProblem) {
+    reason = structuralProblem;
   } else if (formalitySpread > 2) {
     reason = "These items sit at quite different formality levels, so they may feel mismatched together.";
   } else if (colorScore >= 0.75) {
