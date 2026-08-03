@@ -18,7 +18,11 @@ const nextConfig: NextConfig = {
     ],
   },
   env: {
-    NEXT_PUBLIC_GARMENT_EXTRACTION_AVAILABLE: "true",
+    // Garment extraction is unreliable on Vercel's serverless functions (large
+    // ONNX model, tight memory ceiling) — keep it available for local dev only
+    // until that's sorted out. Unchecked/default uploads always save the
+    // original photo either way.
+    NEXT_PUBLIC_GARMENT_EXTRACTION_AVAILABLE: process.env.VERCEL ? "false" : "true",
   },
   // onnxruntime-node (used for garment extraction) ships prebuilt native
   // binaries for every OS/arch — left to its own defaults, Next's output

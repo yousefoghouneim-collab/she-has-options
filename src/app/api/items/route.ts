@@ -11,6 +11,10 @@ import { serializeItem } from "@/lib/serialize";
 // give it more headroom than the framework default.
 export const maxDuration = 60;
 
+// Unreliable on Vercel's serverless functions (large ONNX model, tight memory
+// ceiling) — keep it working locally only until that's sorted out.
+const GARMENT_EXTRACTION_AVAILABLE = !process.env.VERCEL;
+
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
     let displaySourceBuffer = buffer;
     let displayAutoRotate = true;
     let segmentationNote: string | null = null;
-    if (extractGarmentFlag) {
+    if (extractGarmentFlag && GARMENT_EXTRACTION_AVAILABLE) {
       try {
         const { extractGarment, SegmentationNotFoundError } = await import("@/lib/clothSegmentation");
         try {
