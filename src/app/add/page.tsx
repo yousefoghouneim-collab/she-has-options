@@ -20,19 +20,26 @@ export default function AddItemPage() {
     if (!files || !files.length) return;
     setError(null);
     setUploading(true);
-    try {
-      const formData = new FormData();
-      Array.from(files).forEach((f) => formData.append("photos", f));
-      if (extractGarment) formData.append("extractGarment", "true");
-      const res = await fetch("/api/items", { method: "POST", body: formData });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Upload failed");
-      const created: ReviewItem[] = await res.json();
-      setReviewItems((prev) => [...created.map((c) => ({ ...c, saved: "idle" as const })), ...prev]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong uploading your photo.");
-    } finally {
-      setUploading(false);
+    const failures: string[] = [];
+    // Uploaded one photo per request — Vercel's serverless functions reject
+    // request bodies over ~4.5MB, which a multi-photo (or one large-photo)
+    // FormData batch can easily exceed. One request per file keeps each
+    // under that ceiling and lets the rest succeed if one photo fails.
+    for (const file of Array.from(files)) {
+      try {
+        const formData = new FormData();
+        formData.append("photos", file);
+        if (extractGarment) formData.append("extractGarment", "true");
+        const res = await fetch("/api/items", { method: "POST", body: formData });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Upload failed");
+        const created: ReviewItem[] = await res.json();
+        setReviewItems((prev) => [...created.map((c) => ({ ...c, saved: "idle" as const })), ...prev]);
+      } catch (e) {
+        failures.push(`${file.name}: ${e instanceof Error ? e.message : "upload failed"}`);
+      }
     }
+    if (failures.length) setError(failures.join("; "));
+    setUploading(false);
   }
 
   function updateField<K extends keyof WardrobeItem>(id: string, field: K, value: WardrobeItem[K]) {
