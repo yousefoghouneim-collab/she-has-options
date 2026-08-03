@@ -17,11 +17,23 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Garment extraction needs a 176MB local ONNX model on local disk, which
-  // doesn't fit Vercel's serverless model — hide the option in the UI when
-  // deployed there (still fully available when run locally).
   env: {
-    NEXT_PUBLIC_GARMENT_EXTRACTION_AVAILABLE: process.env.VERCEL ? "false" : "true",
+    NEXT_PUBLIC_GARMENT_EXTRACTION_AVAILABLE: "true",
+  },
+  // onnxruntime-node (used for garment extraction) ships prebuilt native
+  // binaries for every OS/arch — left to its own defaults, Next's output
+  // tracing can pull all of them into the deployed function and blow past
+  // Vercel's function size limit. Only linux/x64 runs on Vercel, so include
+  // just that and drop the rest.
+  outputFileTracingIncludes: {
+    "/api/items": ["./node_modules/onnxruntime-node/bin/napi-v6/linux/x64/**/*"],
+  },
+  outputFileTracingExcludes: {
+    "/api/items": [
+      "./node_modules/onnxruntime-node/bin/napi-v6/linux/arm64/**/*",
+      "./node_modules/onnxruntime-node/bin/napi-v6/darwin/**/*",
+      "./node_modules/onnxruntime-node/bin/napi-v6/win32/**/*",
+    ],
   },
 };
 

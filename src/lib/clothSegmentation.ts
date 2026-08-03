@@ -1,5 +1,9 @@
+import { createWriteStream } from "node:fs";
 import { mkdir, rename, stat } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
+import { Readable } from "node:stream";
 import * as ort from "onnxruntime-node";
 import sharp from "sharp";
 
@@ -14,7 +18,11 @@ import sharp from "sharp";
 // copied from the reference implementation's base.py so results match.
 
 const MODEL_URL = "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_cloth_seg.onnx";
-const MODEL_DIR = path.join(process.cwd(), "data", "models");
+// Vercel's deployed function bundle is read-only — only /tmp is writable,
+// and it persists only for the life of that warm container, so each cold
+// start re-downloads the model once and reuses it for subsequent requests
+// on that same instance.
+const MODEL_DIR = process.env.VERCEL ? path.join(os.tmpdir(), "models") : path.join(process.cwd(), "data", "models");
 const MODEL_PATH = path.join(MODEL_DIR, "u2net_cloth_seg.onnx");
 const MIN_MODEL_BYTES = 100 * 1024 * 1024; // sanity check — real file is ~176MB
 
@@ -39,9 +47,9 @@ async function ensureModelDownloaded(): Promise<void> {
       const tmpPath = `${MODEL_PATH}.download`;
       const res = await fetch(MODEL_URL);
       if (!res.ok || !res.body) throw new Error(`Failed to download cloth segmentation model: ${res.status}`);
-      const buffer = Buffer.from(await res.arrayBuffer());
-      const { writeFile } = await import("node:fs/promises");
-      await writeFile(tmpPath, buffer);
+      // Stream straight to disk instead of buffering all ~176MB in memory —
+      // matters on a serverless function with a tight memory ceiling.
+      await pipeline(Readable.fromWeb(res.body as import("node:stream/web").ReadableStream), createWriteStream(tmpPath));
       await rename(tmpPath, MODEL_PATH);
     })();
   }

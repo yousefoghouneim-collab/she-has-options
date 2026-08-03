@@ -95,8 +95,8 @@ export default function AddItemPage() {
           <span>
             <span className="font-semibold text-ink">Extract garment only</span>
             <span className="block text-xs text-ink-soft">
-              For photos of you wearing the item — cuts out just the clothing, no body or background. Adds a few
-              seconds per photo (one-time model download on first use).
+              For photos of you wearing the item — cuts out just the clothing, no body or background. The first
+              photo after a while may take up to a minute (downloading the model); faster after that.
             </span>
           </span>
         </label>

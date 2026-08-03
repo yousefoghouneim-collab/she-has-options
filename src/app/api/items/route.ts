@@ -6,11 +6,10 @@ import { saveOriginalPhoto, writeDisplayImage } from "@/lib/storage";
 import { tagClothingImage, AIUnavailableError } from "@/lib/anthropic";
 import { serializeItem } from "@/lib/serialize";
 
-// Garment extraction needs a 176MB local ONNX model on local disk — doesn't
-// fit Vercel's serverless model, so it's unavailable there (the UI already
-// hides the option; this is the server-side backstop). Dynamically imported
-// only when actually used, so the heavy dependency isn't loaded otherwise.
-const GARMENT_EXTRACTION_AVAILABLE = !process.env.VERCEL;
+// Garment extraction downloads a 176MB ONNX model to /tmp and runs local
+// inference, which can take a while on a cold serverless instance —
+// give it more headroom than the framework default.
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
@@ -49,7 +48,7 @@ export async function POST(request: NextRequest) {
     let displaySourceBuffer = buffer;
     let displayAutoRotate = true;
     let segmentationNote: string | null = null;
-    if (extractGarmentFlag && GARMENT_EXTRACTION_AVAILABLE) {
+    if (extractGarmentFlag) {
       try {
         const { extractGarment, SegmentationNotFoundError } = await import("@/lib/clothSegmentation");
         try {
