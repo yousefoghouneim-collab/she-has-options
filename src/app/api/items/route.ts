@@ -4,8 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { saveOriginalPhoto, writeDisplayImage } from "@/lib/storage";
 import { tagClothingImage, AIUnavailableError } from "@/lib/anthropic";
-import { extractGarment, SegmentationNotFoundError } from "@/lib/clothSegmentation";
 import { serializeItem } from "@/lib/serialize";
+
+// Garment extraction needs a 176MB local ONNX model on local disk — doesn't
+// fit Vercel's serverless model, so it's unavailable there (the UI already
+// hides the option; this is the server-side backstop). Dynamically imported
+// only when actually used, so the heavy dependency isn't loaded otherwise.
+const GARMENT_EXTRACTION_AVAILABLE = !process.env.VERCEL;
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
@@ -44,15 +49,20 @@ export async function POST(request: NextRequest) {
     let displaySourceBuffer = buffer;
     let displayAutoRotate = true;
     let segmentationNote: string | null = null;
-    if (extractGarmentFlag) {
+    if (extractGarmentFlag && GARMENT_EXTRACTION_AVAILABLE) {
       try {
-        displaySourceBuffer = await extractGarment(buffer);
-        displayAutoRotate = false; // extractGarment already handles rotation internally
-      } catch (err) {
-        segmentationNote =
-          err instanceof SegmentationNotFoundError
-            ? "Couldn't isolate a garment in this photo — saved the original instead."
-            : "Garment extraction failed — saved the original instead.";
+        const { extractGarment, SegmentationNotFoundError } = await import("@/lib/clothSegmentation");
+        try {
+          displaySourceBuffer = await extractGarment(buffer);
+          displayAutoRotate = false; // extractGarment already handles rotation internally
+        } catch (err) {
+          segmentationNote =
+            err instanceof SegmentationNotFoundError
+              ? "Couldn't isolate a garment in this photo — saved the original instead."
+              : "Garment extraction failed — saved the original instead.";
+        }
+      } catch {
+        segmentationNote = "Garment extraction isn't available in this deployment — saved the original instead.";
       }
     }
 

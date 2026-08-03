@@ -77,21 +77,23 @@ export default function AddItemPage() {
         Upload a photo and Claude will suggest the category, color, season, and formality. Review and adjust anything before it&apos;s saved.
       </p>
 
-      <label className="mt-5 flex max-w-md cursor-pointer items-start gap-3 border border-line bg-paper p-3 text-sm">
-        <input
-          type="checkbox"
-          checked={extractGarment}
-          onChange={(e) => setExtractGarment(e.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-crimson"
-        />
-        <span>
-          <span className="font-semibold text-ink">Extract garment only</span>
-          <span className="block text-xs text-ink-soft">
-            For photos of you wearing the item — cuts out just the clothing, no body or background. Adds a few seconds
-            per photo (one-time model download on first use).
+      {process.env.NEXT_PUBLIC_GARMENT_EXTRACTION_AVAILABLE === "true" && (
+        <label className="mt-5 flex max-w-md cursor-pointer items-start gap-3 border border-line bg-paper p-3 text-sm">
+          <input
+            type="checkbox"
+            checked={extractGarment}
+            onChange={(e) => setExtractGarment(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-crimson"
+          />
+          <span>
+            <span className="font-semibold text-ink">Extract garment only</span>
+            <span className="block text-xs text-ink-soft">
+              For photos of you wearing the item — cuts out just the clothing, no body or background. Adds a few
+              seconds per photo (one-time model download on first use).
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+      )}
 
       <div
         onDragOver={(e) => {

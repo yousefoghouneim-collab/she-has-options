@@ -23,6 +23,12 @@ type PrismaItem = {
   _count?: { wearLogs: number };
 };
 
+// Blob-stored photos are saved as full URLs; local-disk ones as relative
+// paths served through /api/photos/[...path].
+function toImageUrl(pathOrUrl: string): string {
+  return pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") ? pathOrUrl : `/api/photos/${pathOrUrl}`;
+}
+
 export function serializeItem(item: PrismaItem) {
   let season: string[] = [];
   try {
@@ -32,8 +38,8 @@ export function serializeItem(item: PrismaItem) {
   }
   return {
     id: item.id,
-    imageUrl: `/api/photos/${item.displayPath}`,
-    originalImageUrl: `/api/photos/${item.imagePath}`,
+    imageUrl: toImageUrl(item.displayPath),
+    originalImageUrl: toImageUrl(item.imagePath),
     category: item.category,
     subcategory: item.subcategory,
     primaryColor: item.primaryColor,

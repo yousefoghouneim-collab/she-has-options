@@ -1,13 +1,22 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, unlink as fsUnlink } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import convertHeic from "heic-convert";
+import { put, del } from "@vercel/blob";
 
 const DATA_DIR = path.join(process.cwd(), "data", "photos");
 const ORIGINALS_DIR = path.join(DATA_DIR, "originals");
 const DISPLAY_DIR = path.join(DATA_DIR, "display");
 
 const HEIC_BRANDS = new Set(["heic", "heix", "hevc", "heim", "heis", "hevm", "hevs", "mif1", "msf1"]);
+
+// Local disk works great for local dev but doesn't persist on Vercel's
+// serverless filesystem, so photos live in Vercel Blob whenever a token is
+// configured (production, and locally too once `vercel blob create-store`
+// or `vercel env pull` has populated BLOB_READ_WRITE_TOKEN) — otherwise
+// everything falls back to local files, so the app still works standalone
+// with zero cloud setup.
+const useBlob = !!process.env.BLOB_READ_WRITE_TOKEN;
 
 /**
  * iPhones upload photos as HEIC/HEIF. sharp's built-in HEIF decoder enforces
@@ -34,8 +43,6 @@ function isHeic(buffer: Buffer, mimeType: string): boolean {
  * original and everything downstream are in a browser-renderable format.
  */
 export async function saveOriginalPhoto(id: string, file: File): Promise<{ imagePath: string; buffer: Buffer }> {
-  await mkdir(ORIGINALS_DIR, { recursive: true });
-
   let buffer = Buffer.from(await file.arrayBuffer());
   let mimeType = file.type;
 
@@ -47,8 +54,14 @@ export async function saveOriginalPhoto(id: string, file: File): Promise<{ image
 
   const ext = extensionFor(mimeType);
   const originalRelative = `originals/${id}${ext}`;
-  await writeFile(path.join(DATA_DIR, originalRelative), buffer);
 
+  if (useBlob) {
+    const blob = await put(originalRelative, buffer, { access: "public", contentType: mimeType });
+    return { imagePath: blob.url, buffer };
+  }
+
+  await mkdir(ORIGINALS_DIR, { recursive: true });
+  await writeFile(path.join(DATA_DIR, originalRelative), buffer);
   return { imagePath: originalRelative, buffer };
 }
 
@@ -62,8 +75,6 @@ export async function writeDisplayImage(
   buffer: Buffer,
   autoRotate = true
 ): Promise<{ displayPath: string; webpBuffer: Buffer }> {
-  await mkdir(DISPLAY_DIR, { recursive: true });
-
   const displayRelative = `display/${id}.webp`;
   let pipeline = sharp(buffer);
   if (autoRotate) pipeline = pipeline.rotate();
@@ -71,9 +82,28 @@ export async function writeDisplayImage(
     .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
     .webp({ quality: 82 })
     .toBuffer();
-  await writeFile(path.join(DATA_DIR, displayRelative), webpBuffer);
 
+  if (useBlob) {
+    const blob = await put(displayRelative, webpBuffer, { access: "public", contentType: "image/webp" });
+    return { displayPath: blob.url, webpBuffer };
+  }
+
+  await mkdir(DISPLAY_DIR, { recursive: true });
+  await writeFile(path.join(DATA_DIR, displayRelative), webpBuffer);
   return { displayPath: displayRelative, webpBuffer };
+}
+
+/** Deletes a stored photo — a Blob URL when using cloud storage, a local file otherwise. */
+export async function deletePhoto(pathOrUrl: string): Promise<void> {
+  if (isUrl(pathOrUrl)) {
+    await del(pathOrUrl).catch(() => {});
+  } else {
+    await fsUnlink(path.join(DATA_DIR, pathOrUrl)).catch(() => {});
+  }
+}
+
+export function isUrl(pathOrUrl: string): boolean {
+  return pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://");
 }
 
 export function photoAbsolutePath(relativePath: string): string {

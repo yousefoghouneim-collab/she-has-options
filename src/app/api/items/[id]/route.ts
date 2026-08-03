@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { unlink } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { photoAbsolutePath } from "@/lib/storage";
+import { deletePhoto } from "@/lib/storage";
 import { serializeItem } from "@/lib/serialize";
 import { CATEGORIES, SEASONS } from "@/lib/taxonomy";
 
@@ -64,10 +63,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   await prisma.clothingItem.delete({ where: { id } });
 
-  await Promise.allSettled([
-    unlink(photoAbsolutePath(item.imagePath)),
-    unlink(photoAbsolutePath(item.displayPath)),
-  ]);
+  await Promise.allSettled([deletePhoto(item.imagePath), deletePhoto(item.displayPath)]);
 
   return NextResponse.json({ ok: true });
 }
